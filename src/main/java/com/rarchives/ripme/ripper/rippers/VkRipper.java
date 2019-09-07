@@ -19,10 +19,11 @@ import com.rarchives.ripme.utils.Utils;
 
 public class VkRipper extends AbstractJSONRipper {
 
-    private static final String DOMAIN = "vk.com",
-                                HOST   = "vk";
+    private static final String DOMAIN = "vk.com", HOST = "vk";
 
-    enum RipType { VIDEO, IMAGE }
+    enum RipType {
+        VIDEO, IMAGE
+    }
 
     private RipType RIP_TYPE;
     private String oid;
@@ -51,27 +52,19 @@ public class VkRipper extends AbstractJSONRipper {
             postData.put("act", "load_videos_silent");
             postData.put("offset", "0");
             postData.put("oid", oid);
-            Document doc = Http.url(u)
-                    .referrer(this.url)
-                    .ignoreContentType()
-                    .data(postData)
-                    .post();
+            Document doc = Http.url(u).referrer(this.url).ignoreContentType().data(postData).post();
             String[] jsonStrings = doc.toString().split("<!>");
             return new JSONObject(jsonStrings[jsonStrings.length - 1]);
         } else {
-            Map<String,String> photoIDsToURLs = new HashMap<>();
+            Map<String, String> photoIDsToURLs = new HashMap<>();
             int offset = 0;
             while (true) {
                 LOGGER.info("    Retrieving " + this.url);
-                Map<String,String> postData = new HashMap<>();
+                Map<String, String> postData = new HashMap<>();
                 postData.put("al", "1");
                 postData.put("offset", Integer.toString(offset));
                 postData.put("part", "1");
-                Document doc = Http.url(this.url)
-                        .referrer(this.url)
-                        .ignoreContentType()
-                        .data(postData)
-                        .post();
+                Document doc = Http.url(this.url).referrer(this.url).data(postData).post();
 
                 String body = doc.toString();
                 if (!body.contains("<div")) {
@@ -133,8 +126,8 @@ public class VkRipper extends AbstractJSONRipper {
                 int vidid = jsonVideo.getInt(1);
                 String videoURL;
                 try {
-                    videoURL = com.rarchives.ripme.ripper.rippers.video.VkRipper.getVideoURLAtPage(
-                            "http://vk.com/video" + oid + "_" + vidid);
+                    videoURL = com.rarchives.ripme.ripper.rippers.video.VkRipper
+                            .getVideoURLAtPage("http://vk.com/video" + oid + "_" + vidid);
                 } catch (IOException e) {
                     LOGGER.error("Error while ripping video id: " + vidid);
                     return pageURLs;
@@ -165,6 +158,11 @@ public class VkRipper extends AbstractJSONRipper {
             }
         } else {
             addURLToDownload(url);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                LOGGER.error("Interrupted while waiting to fetch next video URL", e);
+            }
         }
     }
 
@@ -187,42 +185,36 @@ public class VkRipper extends AbstractJSONRipper {
     public void rip() throws IOException {
         if (this.url.toExternalForm().contains("/videos")) {
             RIP_TYPE = RipType.VIDEO;
-            JSONObject json = getFirstPage();
-            List<String> URLs = getURLsFromJSON(json);
-            for (int index = 0; index < URLs.size(); index ++) {
-                downloadURL(new URL(URLs.get(index)), index);
-            }
-            waitForThreads();
-        }
-        else {
+        } else {
             RIP_TYPE = RipType.IMAGE;
         }
+
+        JSONObject json = getFirstPage();
+        List<String> URLs = getURLsFromJSON(json);
+        for (int index = 0; index < URLs.size(); index++) {
+            downloadURL(new URL(URLs.get(index)), index);
+        }
+        waitForThreads();
     }
 
-    private Map<String,String> getPhotoIDsToURLs(String photoID) throws IOException {
-        Map<String,String> photoIDsToURLs = new HashMap<>();
-        Map<String,String> postData = new HashMap<>();
+    private Map<String, String> getPhotoIDsToURLs(String photoID) throws IOException {
+        Map<String, String> photoIDsToURLs = new HashMap<>();
+        Map<String, String> postData = new HashMap<>();
         // act=show&al=1&list=album45506334_172415053&module=photos&photo=45506334_304658196
         postData.put("list", getGID(this.url));
         postData.put("act", "show");
         postData.put("al", "1");
         postData.put("module", "photos");
         postData.put("photo", photoID);
-        Document doc = Jsoup
-                .connect("https://vk.com/al_photos.php")
-                .header("Referer", this.url.toExternalForm())
-                .ignoreContentType(true)
-                .userAgent(USER_AGENT)
-                .timeout(5000)
-                .data(postData)
-                .post();
+        Document doc = Jsoup.connect("https://vk.com/al_photos.php").header("Referer", this.url.toExternalForm())
+                .ignoreContentType(true).userAgent(USER_AGENT).timeout(5000).data(postData).post();
         String jsonString = doc.toString();
         jsonString = jsonString.substring(jsonString.indexOf("<!json>") + "<!json>".length());
         jsonString = jsonString.substring(0, jsonString.indexOf("<!>"));
         JSONArray json = new JSONArray(jsonString);
         for (int i = 0; i < json.length(); i++) {
             JSONObject jsonImage = json.getJSONObject(i);
-            for (String key : new String[] {"z_src", "y_src", "x_src"}) {
+            for (String key : new String[] { "z_src", "y_src", "x_src" }) {
                 if (!jsonImage.has(key)) {
                     continue;
                 }
