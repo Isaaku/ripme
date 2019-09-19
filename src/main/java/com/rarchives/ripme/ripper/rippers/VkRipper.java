@@ -104,7 +104,7 @@ public class VkRipper extends AbstractJSONRipper {
                     }
                 }
 
-                if (elements.size() < 40 || isStopped() || isThisATest()) {
+                if (elements.size() != 40 || isStopped() || isThisATest()) {
                     break;
                 }
                 offset += elements.size();
@@ -209,17 +209,19 @@ public class VkRipper extends AbstractJSONRipper {
         Document doc = Jsoup.connect("https://vk.com/al_photos.php").header("Referer", this.url.toExternalForm())
                 .ignoreContentType(true).userAgent(USER_AGENT).timeout(5000).data(postData).post();
         String jsonString = doc.toString();
-        jsonString = jsonString.substring(jsonString.indexOf("<!json>") + "<!json>".length());
-        jsonString = jsonString.substring(0, jsonString.indexOf("<!>"));
-        JSONArray json = new JSONArray(jsonString);
-        for (int i = 0; i < json.length(); i++) {
-            JSONObject jsonImage = json.getJSONObject(i);
-            for (String key : new String[] { "z_src", "y_src", "x_src" }) {
-                if (!jsonImage.has(key)) {
-                    continue;
+        if (jsonString.contains("<!json>")) {
+            jsonString = jsonString.substring(jsonString.indexOf("<!json>") + "<!json>".length());
+            jsonString = jsonString.substring(0, jsonString.indexOf("<!>"));
+            JSONArray json = new JSONArray(jsonString);
+            for (int i = 0; i < json.length(); i++) {
+                JSONObject jsonImage = json.getJSONObject(i);
+                for (String key : new String[] { "z_src", "y_src", "x_src" }) {
+                    if (!jsonImage.has(key)) {
+                        continue;
+                    }
+                    photoIDsToURLs.put(jsonImage.getString("id"), jsonImage.getString(key));
+                    break;
                 }
-                photoIDsToURLs.put(jsonImage.getString("id"), jsonImage.getString(key));
-                break;
             }
         }
         return photoIDsToURLs;
