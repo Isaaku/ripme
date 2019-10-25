@@ -2,6 +2,7 @@ package com.rarchives.ripme.ripper.rippers;
 
 import com.rarchives.ripme.ripper.AbstractJSONRipper;
 import com.rarchives.ripme.utils.Http;
+import com.rarchives.ripme.utils.JSONSpliterator;
 import com.rarchives.ripme.utils.Utils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -232,7 +233,7 @@ public class InstagramRipper extends AbstractJSONRipper {
         pinnedReelRip = true;
         qHash = getQhash(document);
         JSONObject queryForDetails = new JSONObject();
-        getStreamOfJsonArray(pinnedItems)
+        JSONSpliterator.getStreamOfJsonArray(pinnedItems)
                 .map(object -> getJsonStringByPath(object, "node.id"))
                 .forEach(id -> queryForDetails.append("highlight_reel_ids", id));
         queryForDetails.put("precomposed_overlay", false);
@@ -250,8 +251,8 @@ public class InstagramRipper extends AbstractJSONRipper {
     public List<String> getURLsFromJSON(JSONObject json) {
         if (storiesRip || pinnedReelRip) {
             JSONArray storyAlbums = getJsonArrayByPath(json, "data.reels_media");
-            return getStreamOfJsonArray(storyAlbums)
-                    .flatMap(album -> getStreamOfJsonArray(album.getJSONArray("items")))
+            return JSONSpliterator.getStreamOfJsonArray(storyAlbums)
+                    .flatMap(album -> JSONSpliterator.getStreamOfJsonArray(album.getJSONArray("items")))
                     .peek(storyItem -> itemPrefixes.add(getTimestampPrefix(storyItem)))
                     .flatMap(this::parseStoryItemForUrls)
                     .collect(Collectors.toList());
@@ -262,7 +263,7 @@ public class InstagramRipper extends AbstractJSONRipper {
             return parseItemDetailsForUrls(detailsJson).collect(Collectors.toList());
         }
         JSONArray edges = getMediaRoot(json).getJSONArray("edges");
-        return getStreamOfJsonArray(edges)
+        return JSONSpliterator.getStreamOfJsonArray(edges)
                 .map(edge -> getJsonStringByPath(edge, "node.shortcode"))
                 .map(this::downloadItemDetailsJson)
                 .filter(Objects::nonNull)
@@ -357,7 +358,7 @@ public class InstagramRipper extends AbstractJSONRipper {
                 return Stream.of(mediaItem.getString("video_url"));
             case "GraphSidecar":
                 JSONArray sideCar = getJsonArrayByPath(mediaItem, "edge_sidecar_to_children.edges");
-                return getStreamOfJsonArray(sideCar).map(object -> object.getJSONObject("node"))
+                return JSONSpliterator.getStreamOfJsonArray(sideCar).map(object -> object.getJSONObject("node"))
                                                     .flatMap(this::parseRootForUrls);
             default:
                 return Stream.empty();
@@ -409,28 +410,5 @@ public class InstagramRipper extends AbstractJSONRipper {
 
     private String getJsonStringByPath(JSONObject object, String key) {
         return getByPath(JSONObject::getString, object, key);
-    }
-
-    private Stream<JSONObject> getStreamOfJsonArray(JSONArray array) {
-        return StreamSupport.stream(new JSONSpliterator(array), false);
-    }
-
-    private class JSONSpliterator extends Spliterators.AbstractSpliterator<JSONObject> {
-        private JSONArray array;
-        private int index = 0;
-
-        JSONSpliterator(JSONArray array) {
-            super(array.length(), SIZED | ORDERED);
-            this.array = array;
-        }
-
-        @Override
-        public boolean tryAdvance(Consumer<? super JSONObject> action) {
-            if (index == array.length()) {
-                return false;
-            }
-            action.accept(array.getJSONObject(index++));
-            return true;
-        }
     }
 }

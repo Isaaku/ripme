@@ -2,7 +2,6 @@ package com.rarchives.ripme.utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -22,7 +21,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,7 +30,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -832,6 +829,7 @@ public class Utils {
     private static void initialiseMagicHashMap() {
         magicHash.put(ByteBuffer.wrap(new byte[] { -1, -40, -1, -37, 0, 0, 0, 0 }), "jpeg");
         magicHash.put(ByteBuffer.wrap(new byte[] { -119, 80, 78, 71, 13, 0, 0, 0 }), "png");
+        magicHash.put(ByteBuffer.wrap(new byte[] { 0, 0, 0, 32, 102, 0, 0, 0 }), "mp4"); 
     }
 
     // Checks if a file exists ignoring it's extension.
